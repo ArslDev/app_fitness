@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../common/color_extension.dart';
 import '../../common/common.dart';
@@ -16,6 +17,98 @@ class AddScheduleView extends StatefulWidget {
 }
 
 class _AddScheduleViewState extends State<AddScheduleView> {
+  DateTime? _selectedDateTime; // full date + time for schedule
+  String _selectedWorkout = 'Fullbody Workout';
+  // Difficulty fixed (UI removed per request); still stored for compatibility.
+  String _difficulty = 'Beginner';
+
+  final List<String> _workouts = [
+    'Fullbody Workout',
+    'Upperbody Workout',
+    'Lowerbody Workout',
+    'Ab Workout',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Default time = now with provided date's year/month/day
+    final now = DateTime.now();
+    _selectedDateTime = DateTime(
+      widget.date.year,
+      widget.date.month,
+      widget.date.day,
+      now.hour,
+      now.minute,
+    );
+  }
+
+  Future<void> _pickWorkout() async {
+    await showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                height: 4,
+                width: 40,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Choose Workout',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              ..._workouts.map(
+                (w) => ListTile(
+                  title: Text(w),
+                  trailing: w == _selectedWorkout
+                      ? const Icon(Icons.check)
+                      : null,
+                  onTap: () {
+                    setState(() => _selectedWorkout = w);
+                    Navigator.pop(ctx);
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _saveSchedule() async {
+    if (_selectedDateTime == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('workout_schedules');
+    List list = [];
+    if (raw != null) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is List) list = decoded;
+      } catch (_) {}
+    }
+    list.add({
+      'name': _selectedWorkout,
+      'ts': _selectedDateTime!.toIso8601String(),
+      'difficulty': _difficulty,
+    });
+    await prefs.setString('workout_schedules', jsonEncode(list));
+    if (mounted) Navigator.pop(context, true);
+  }
+
   @override
   Widget build(BuildContext context) {
     var media = MediaQuery.of(context).size;
@@ -35,8 +128,9 @@ class _AddScheduleViewState extends State<AddScheduleView> {
             width: 40,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-                color: TColor.lightGray,
-                borderRadius: BorderRadius.circular(10)),
+              color: TColor.lightGray,
+              borderRadius: BorderRadius.circular(10),
+            ),
             child: Image.asset(
               "assets/img/closed_btn.png",
               width: 15,
@@ -48,7 +142,10 @@ class _AddScheduleViewState extends State<AddScheduleView> {
         title: Text(
           "Add Schedule",
           style: TextStyle(
-              color: TColor.black, fontSize: 16, fontWeight: FontWeight.w700),
+            color: TColor.black,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         actions: [
           InkWell(
@@ -59,8 +156,9 @@ class _AddScheduleViewState extends State<AddScheduleView> {
               width: 40,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                  color: TColor.lightGray,
-                  borderRadius: BorderRadius.circular(10)),
+                color: TColor.lightGray,
+                borderRadius: BorderRadius.circular(10),
+              ),
               child: Image.asset(
                 "assets/img/more_btn.png",
                 width: 15,
@@ -68,97 +166,77 @@ class _AddScheduleViewState extends State<AddScheduleView> {
                 fit: BoxFit.contain,
               ),
             ),
-          )
+          ),
         ],
       ),
       backgroundColor: TColor.white,
       body: Container(
         padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 25),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(
-            children: [
-              Image.asset(
-                "assets/img/date.png",
-                width: 20,
-                height: 20,
-              ),
-              const SizedBox(
-                width: 8,
-              ),
-              Text(
-                dateToString(widget.date, formatStr: "E, dd MMMM yyyy"),
-                style: TextStyle(color: TColor.gray, fontSize: 14),
-              ),
-            ],
-          ),
-          const SizedBox(
-            height: 20,
-          ),
-          Text(
-            "Time",
-            style: TextStyle(
-                color: TColor.black, fontSize: 14, fontWeight: FontWeight.w500),
-          ),
-          SizedBox(
-            height: media.width * 0.35,
-            child: CupertinoDatePicker(
-              onDateTimeChanged: (newDate) {},
-              initialDateTime: DateTime.now(),
-              use24hFormat: false,
-              minuteInterval: 1,
-              mode: CupertinoDatePickerMode.time,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Image.asset("assets/img/date.png", width: 20, height: 20),
+                const SizedBox(width: 8),
+                Text(
+                  dateToString(widget.date, formatStr: "E, dd MMMM yyyy"),
+                  style: TextStyle(color: TColor.gray, fontSize: 14),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(
-            height: 20,
-          ),
-          Text(
-            "Details Workout",
-            style: TextStyle(
-                color: TColor.black, fontSize: 14, fontWeight: FontWeight.w500),
-          ),
-          const SizedBox(
-            height: 8,
-          ),
-          IconTitleNextRow(
+            const SizedBox(height: 20),
+            Text(
+              "Time",
+              style: TextStyle(
+                color: TColor.black,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(
+              height: media.width * 0.35,
+              child: CupertinoDatePicker(
+                onDateTimeChanged: (newTime) {
+                  setState(() {
+                    _selectedDateTime = DateTime(
+                      widget.date.year,
+                      widget.date.month,
+                      widget.date.day,
+                      newTime.hour,
+                      newTime.minute,
+                    );
+                  });
+                },
+                initialDateTime: _selectedDateTime,
+                use24hFormat: false,
+                minuteInterval: 1,
+                mode: CupertinoDatePickerMode.time,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              "Details Workout",
+              style: TextStyle(
+                color: TColor.black,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            IconTitleNextRow(
               icon: "assets/img/choose_workout.png",
               title: "Choose Workout",
-              time: "Upperbody",
+              time: _selectedWorkout,
               color: TColor.lightGray,
-              onPressed: () {}),
-          const SizedBox(
-            height: 10,
-          ),
-          IconTitleNextRow(
-              icon: "assets/img/difficulity.png",
-              title: "Difficulity",
-              time: "Beginner",
-              color: TColor.lightGray,
-              onPressed: () {}),
-          const SizedBox(
-            height: 10,
-          ),
-          IconTitleNextRow(
-              icon: "assets/img/repetitions.png",
-              title: "Custom Repetitions",
-              time: "",
-              color: TColor.lightGray,
-              onPressed: () {}),
-          const SizedBox(
-            height: 10,
-          ),
-          IconTitleNextRow(
-              icon: "assets/img/repetitions.png",
-              title: "Custom Weights",
-              time: "",
-              color: TColor.lightGray,
-              onPressed: () {}),
-          Spacer(),
-          RoundButton(title: "Save", onPressed: () {}),
-          const SizedBox(
-            height: 20,
-          ),
-        ]),
+              onPressed: _pickWorkout,
+            ),
+            const SizedBox(height: 10),
+            const Spacer(),
+            RoundButton(title: "Save", onPressed: _saveSchedule),
+            const SizedBox(height: 20),
+          ],
+        ),
       ),
     );
   }

@@ -1,4 +1,5 @@
 
+import 'package:app_fitness/nitification_test.dart';
 import 'package:app_fitness/view/sleep_tracker/sleep_tracker_view.dart';
 import 'package:flutter/material.dart';
 
@@ -35,16 +36,16 @@ class SelectView extends StatelessWidget {
 
             const SizedBox(height: 15,),
 
-            // RoundButton(
-            //     title: "Meal Planner",
-            //     onPressed: () {
-            //       Navigator.push(
-            //         context,
-            //         MaterialPageRoute(
-            //           builder: (context) =>  MealPlannerView(),
-            //         ),
-            //       );
-            //     }),
+            RoundButton(
+                title: "Notification test",
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>  testNotification(),
+                    ),
+                  );
+                }),
 
             const SizedBox(height: 15,),
 

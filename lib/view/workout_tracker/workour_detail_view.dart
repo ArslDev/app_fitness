@@ -1,12 +1,14 @@
-
-import 'package:app_fitness/view/workout_tracker/workout_schedule_view.dart';
+import 'package:app_fitness/view/workout_tracker/exercises_stpe_details.dart';
 import 'package:flutter/material.dart';
-
+import 'package:app_fitness/view/workout_tracker/add_schedule_view.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import '../../common/color_extension.dart';
 import '../../common_widget/exercises_set_section.dart';
 import '../../common_widget/icon_title_next_row.dart';
 import '../../common_widget/round_button.dart';
-import 'exercises_stpe_details.dart';
+// Make sure to import ExercisesStepDetails if it exists
+// import 'package:app_fitness/view/workout_tracker/exercises_step_details.dart';
 
 class WorkoutDetailView extends StatefulWidget {
   final Map dObj;
@@ -17,16 +19,51 @@ class WorkoutDetailView extends StatefulWidget {
 }
 
 class _WorkoutDetailViewState extends State<WorkoutDetailView> {
+  DateTime? _nextScheduled;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNextSchedule();
+  }
+
+  Future<void> _loadNextSchedule() async {
+    // Load latest schedule for this workout from SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('workout_schedules');
+    if (raw == null) return;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is List) {
+        final name = widget.dObj['title']?.toString().trim().toLowerCase() ?? '';
+        final List<DateTime> times = [];
+        for (final e in decoded) {
+          final eName = (e['name'] ?? '').toString().trim().toLowerCase();
+          if (e is Map && eName == name && e['ts'] != null) {
+            final dt = DateTime.tryParse(e['ts']);
+            if (dt != null) times.add(dt);
+          }
+        }
+        if (times.isNotEmpty) {
+          times.sort();
+          setState(() {
+            _nextScheduled = times.last;
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
   List latestArr = [
     {
       "image": "assets/img/Workout1.png",
       "title": "Fullbody Workout",
-      "time": "Today, 03:00pm"
+      "time": "Today, 03:00pm",
     },
     {
       "image": "assets/img/Workout2.png",
       "title": "Upperbody Workout",
-      "time": "June 05, 02:00pm"
+      "time": "June 05, 02:00pm",
     },
   ];
 
@@ -44,19 +81,19 @@ class _WorkoutDetailViewState extends State<WorkoutDetailView> {
         {
           "image": "assets/img/img_2.png",
           "title": "Jumping Jack",
-          "value": "12x"
+          "value": "12x",
         },
         {"image": "assets/img/img_1.png", "title": "Skipping", "value": "15x"},
         {"image": "assets/img/img_2.png", "title": "Squats", "value": "20x"},
         {
           "image": "assets/img/img_1.png",
           "title": "Arm Raises",
-          "value": "00:53"
+          "value": "00:53",
         },
         {
           "image": "assets/img/img_2.png",
           "title": "Rest and Drink",
-          "value": "02:00"
+          "value": "02:00",
         },
       ],
     },
@@ -67,30 +104,31 @@ class _WorkoutDetailViewState extends State<WorkoutDetailView> {
         {
           "image": "assets/img/img_2.png",
           "title": "Jumping Jack",
-          "value": "12x"
+          "value": "12x",
         },
         {"image": "assets/img/img_1.png", "title": "Skipping", "value": "15x"},
         {"image": "assets/img/img_2.png", "title": "Squats", "value": "20x"},
         {
           "image": "assets/img/img_1.png",
           "title": "Arm Raises",
-          "value": "00:53"
+          "value": "00:53",
         },
         {
           "image": "assets/img/img_2.png",
           "title": "Rest and Drink",
-          "value": "02:00"
+          "value": "02:00",
         },
       ],
-    }
+    },
   ];
 
   @override
   Widget build(BuildContext context) {
     var media = MediaQuery.of(context).size;
     return Container(
-      decoration:
-      BoxDecoration(gradient: LinearGradient(colors: TColor.primaryG)),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: TColor.primaryG),
+      ),
       child: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) {
           return [
@@ -108,8 +146,9 @@ class _WorkoutDetailViewState extends State<WorkoutDetailView> {
                   width: 40,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                      color: TColor.lightGray,
-                      borderRadius: BorderRadius.circular(10)),
+                    color: TColor.lightGray,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   child: Image.asset(
                     "assets/img/black_btn.png",
                     width: 15,
@@ -127,8 +166,9 @@ class _WorkoutDetailViewState extends State<WorkoutDetailView> {
                     width: 40,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                        color: TColor.lightGray,
-                        borderRadius: BorderRadius.circular(10)),
+                      color: TColor.lightGray,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     child: Image.asset(
                       "assets/img/more_btn.png",
                       width: 15,
@@ -136,7 +176,7 @@ class _WorkoutDetailViewState extends State<WorkoutDetailView> {
                       fit: BoxFit.contain,
                     ),
                   ),
-                )
+                ),
               ],
             ),
             SliverAppBar(
@@ -161,9 +201,12 @@ class _WorkoutDetailViewState extends State<WorkoutDetailView> {
         body: Container(
           padding: const EdgeInsets.symmetric(horizontal: 15),
           decoration: BoxDecoration(
-              color: TColor.white,
-              borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(25), topRight: Radius.circular(25))),
+            color: TColor.white,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(25),
+              topRight: Radius.circular(25),
+            ),
+          ),
           child: Scaffold(
             backgroundColor: Colors.transparent,
             body: Stack(
@@ -171,19 +214,16 @@ class _WorkoutDetailViewState extends State<WorkoutDetailView> {
                 SingleChildScrollView(
                   child: Column(
                     children: [
-                      const SizedBox(
-                        height: 10,
-                      ),
+                      const SizedBox(height: 10),
                       Container(
                         width: 50,
                         height: 4,
                         decoration: BoxDecoration(
-                            color: TColor.gray.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(3)),
+                          color: TColor.gray.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
                       ),
-                      SizedBox(
-                        height: media.width * 0.05,
-                      ),
+                      SizedBox(height: media.width * 0.05),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -194,14 +234,17 @@ class _WorkoutDetailViewState extends State<WorkoutDetailView> {
                                 Text(
                                   widget.dObj["title"].toString(),
                                   style: TextStyle(
-                                      color: TColor.black,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w700),
+                                    color: TColor.black,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                                 Text(
                                   "${widget.dObj["exercises"].toString()} | ${widget.dObj["time"].toString()} | 320 Calories Burn",
                                   style: TextStyle(
-                                      color: TColor.gray, fontSize: 12),
+                                    color: TColor.gray,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ],
                             ),
@@ -214,143 +257,154 @@ class _WorkoutDetailViewState extends State<WorkoutDetailView> {
                               height: 15,
                               fit: BoxFit.contain,
                             ),
-                          )
+                          ),
                         ],
                       ),
-                      SizedBox(
-                        height: media.width * 0.05,
-                      ),
+                      SizedBox(height: media.width * 0.05),
                       IconTitleNextRow(
-                          icon: "assets/img/time.png",
-                          title: "Schedule Workout",
-                          time: "5/27, 09:00 AM",
-                          color: TColor.primaryColor2.withOpacity(0.3),
-                          onPressed: () {
-
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => const WorkoutScheduleView() )  );
-                          }),
-                      SizedBox(
-                        height: media.width * 0.02,
+                        icon: "assets/img/time.png",
+                        title: "Schedule Workout",
+                        time: _nextScheduled == null
+                            ? "No schedule"
+                            : "${_nextScheduled!.month}/${_nextScheduled!.day}, ${_nextScheduled!.hour.toString().padLeft(2, '0')}:${_nextScheduled!.minute.toString().padLeft(2, '0')}"
+                        ,
+                        color: TColor.primaryColor2.withOpacity(0.3),
+                        onPressed: () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  AddScheduleView(date: DateTime.now()),
+                            ),
+                          );
+                          if (result == true) {
+                            _loadNextSchedule();
+                          }
+                        },
                       ),
+                      SizedBox(height: media.width * 0.02),
                       IconTitleNextRow(
-                          icon: "assets/img/difficulity.png",
-                          title: "Difficulity",
-                          time: "Beginner",
-                          color: TColor.secondaryColor2.withOpacity(0.3),
-                          onPressed: () {}),
-                      SizedBox(
-                        height: media.width * 0.05,
+                        icon: "assets/img/difficulity.png",
+                        title: "Difficulity",
+                        time: "Beginner",
+                        color: TColor.secondaryColor2.withOpacity(0.3),
+                        onPressed: () {},
                       ),
+                      SizedBox(height: media.width * 0.05),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
                             "You'll Need",
                             style: TextStyle(
-                                color: TColor.black,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700),
+                              color: TColor.black,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                           TextButton(
                             onPressed: () {},
                             child: Text(
                               "${youArr.length} Items",
-                              style:
-                              TextStyle(color: TColor.gray, fontSize: 12),
+                              style: TextStyle(
+                                color: TColor.gray,
+                                fontSize: 12,
+                              ),
                             ),
-                          )
+                          ),
                         ],
                       ),
                       SizedBox(
                         height: media.width * 0.5,
                         child: ListView.builder(
-                            padding: EdgeInsets.zero,
-                            scrollDirection: Axis.horizontal,
-                            shrinkWrap: true,
-                            itemCount: youArr.length,
-                            itemBuilder: (context, index) {
-                              var yObj = youArr[index] as Map? ?? {};
-                              return Container(
-                                  margin: const EdgeInsets.all(8),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                    children: [
-                                      Container(
-                                        height: media.width * 0.35,
-                                        width: media.width * 0.35,
-                                        decoration: BoxDecoration(
-                                            color: TColor.lightGray,
-                                            borderRadius:
-                                            BorderRadius.circular(15)),
-                                        alignment: Alignment.center,
-                                        child: Image.asset(
-                                          yObj["image"].toString(),
-                                          width: media.width * 0.2,
-                                          height: media.width * 0.2,
-                                          fit: BoxFit.contain,
-                                        ),
+                          padding: EdgeInsets.zero,
+                          scrollDirection: Axis.horizontal,
+                          shrinkWrap: true,
+                          itemCount: youArr.length,
+                          itemBuilder: (context, index) {
+                            var yObj = youArr[index] as Map? ?? {};
+                            return Container(
+                              margin: const EdgeInsets.all(8),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    height: media.width * 0.35,
+                                    width: media.width * 0.35,
+                                    decoration: BoxDecoration(
+                                      color: TColor.lightGray,
+                                      borderRadius: BorderRadius.circular(15),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Image.asset(
+                                      yObj["image"].toString(),
+                                      width: media.width * 0.2,
+                                      height: media.width * 0.2,
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Text(
+                                      yObj["title"].toString(),
+                                      style: TextStyle(
+                                        color: TColor.black,
+                                        fontSize: 12,
                                       ),
-                                      Padding(
-                                        padding: const EdgeInsets.all(8.0),
-                                        child: Text(
-                                          yObj["title"].toString(),
-                                          style: TextStyle(
-                                              color: TColor.black,
-                                              fontSize: 12),
-                                        ),
-                                      )
-                                    ],
-                                  ));
-                            }),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
                       ),
-                      SizedBox(
-                        height: media.width * 0.05,
-                      ),
+                      SizedBox(height: media.width * 0.05),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
                             "Exercises",
                             style: TextStyle(
-                                color: TColor.black,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700),
+                              color: TColor.black,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                           TextButton(
                             onPressed: () {},
                             child: Text(
                               "${youArr.length} Sets",
-                              style:
-                              TextStyle(color: TColor.gray, fontSize: 12),
+                              style: TextStyle(
+                                color: TColor.gray,
+                                fontSize: 12,
+                              ),
                             ),
-                          )
+                          ),
                         ],
                       ),
                       ListView.builder(
-                          padding: EdgeInsets.zero,
-                          physics: const NeverScrollableScrollPhysics(),
-                          shrinkWrap: true,
-                          itemCount: exercisesArr.length,
-                          itemBuilder: (context, index) {
-                            var sObj = exercisesArr[index] as Map? ?? {};
-                            return ExercisesSetSection(
-                              sObj: sObj,
-                              onPressed: (obj) {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => ExercisesStepDetails(
-                                      eObj: obj,
-                                    ),
-                                  ),
-                                );
-                              },
-                            );
-                          }),
-                      SizedBox(
-                        height: media.width * 0.1,
+                        padding: EdgeInsets.zero,
+                        physics: const NeverScrollableScrollPhysics(),
+                        shrinkWrap: true,
+                        itemCount: exercisesArr.length,
+                        itemBuilder: (context, index) {
+                          var sObj = exercisesArr[index] as Map? ?? {};
+                          return ExercisesSetSection(
+                            sObj: sObj,
+                            onPressed: (obj) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      ExercisesStepDetails(eObj: obj),
+                                ),
+                              );
+                            },
+                          );
+                        },
                       ),
+                      SizedBox(height: media.width * 0.1),
                     ],
                   ),
                 ),
@@ -359,10 +413,10 @@ class _WorkoutDetailViewState extends State<WorkoutDetailView> {
                     mainAxisSize: MainAxisSize.max,
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      RoundButton(title: "Start Workout", onPressed: () {})
+                      RoundButton(title: "Start Workout", onPressed: () {}),
                     ],
                   ),
-                )
+                ),
               ],
             ),
           ),

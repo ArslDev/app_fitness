@@ -7,7 +7,8 @@ import '../../common_widget/round_textfield.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class CompleteProfileView extends StatefulWidget {
-  const CompleteProfileView({super.key});
+  final VoidCallback? onNext;
+  const CompleteProfileView({Key? key, this.onNext}) : super(key: key);
 
   @override
   State<CompleteProfileView> createState() => _CompleteProfileViewState();
@@ -281,12 +282,9 @@ class _CompleteProfileViewState extends State<CompleteProfileView> {
                             'user_height',
                             double.tryParse(txtHeight.text) ?? 0,
                           );
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const WhatYourGoalView(),
-                            ),
-                          );
+                          if (widget.onNext != null) {
+                            widget.onNext!();
+                          }
                         },
                       ),
                     ],

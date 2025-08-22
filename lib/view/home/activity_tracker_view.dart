@@ -616,7 +616,7 @@ class _ActivityTrackerViewState extends State<ActivityTrackerView> {
       appBar: AppBar(
         backgroundColor: TColor.white,
         centerTitle: true,
-        elevation: 1,
+        elevation: 01,
         leading: InkWell(
           onTap: () {
             Navigator.pop(context);

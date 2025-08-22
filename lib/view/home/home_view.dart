@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:dotted_dashed_line/dotted_dashed_line.dart';
+import 'dart:async';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:simple_animation_progress_bar/simple_animation_progress_bar.dart';
@@ -27,6 +27,9 @@ class _HomeViewState extends State<HomeView> {
   double userHeight = 0;
   double userBMI = 0;
   String bmiStatus = "";
+  // Sleep summary (today)
+  Duration? _todaySleepDuration; // scheduled or actual if in progress
+  Timer? _sleepTicker;
 
   List lastWorkoutArr = [
     {
@@ -129,6 +132,10 @@ class _HomeViewState extends State<HomeView> {
     super.initState();
     _loadUserProfile();
     _loadWaterData();
+    _loadTodaySleep();
+    _sleepTicker = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) _loadTodaySleep(refreshOnly: true);
+    });
   }
 
   double _calculateBMI(double weight, double heightCm) {
@@ -157,6 +164,53 @@ class _HomeViewState extends State<HomeView> {
       userBMI = _calculateBMI(userWeight, userHeight);
       bmiStatus = _getBMIStatus(userBMI);
     });
+  }
+
+  String _dateKey(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}${d.month.toString().padLeft(2, '0')}${d.day.toString().padLeft(2, '0')}';
+
+  Future<void> _loadTodaySleep({bool refreshOnly = false}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final now = DateTime.now();
+      final base = _dateKey(now);
+      final bedStr = prefs.getString('sleep_bed_$base');
+      final alarmStr = prefs.getString('sleep_alarm_$base');
+      if (bedStr == null || alarmStr == null) {
+        if (!refreshOnly) {
+          setState(() {
+            _todaySleepDuration = null;
+          });
+        }
+        return;
+      }
+      DateTime bed = DateTime.parse(bedStr);
+      DateTime alarm = DateTime.parse(alarmStr);
+      if (alarm.isBefore(bed)) alarm = alarm.add(const Duration(days: 1));
+      Duration dur;
+      if (now.isAfter(bed) && now.isBefore(alarm)) {
+        // partial so far
+        dur = now.difference(bed);
+      } else {
+        dur = alarm.difference(bed);
+      }
+      setState(() {
+        _todaySleepDuration = dur;
+      });
+    } catch (_) {}
+  }
+
+  String _sleepDurationText() {
+    if (_todaySleepDuration == null) return '--';
+    final h = _todaySleepDuration!.inHours;
+    final m = _todaySleepDuration!.inMinutes % 60;
+    return '${h}h ${m}m';
+  }
+
+  @override
+  void dispose() {
+    _sleepTicker?.cancel();
+    super.dispose();
   }
 
   @override
@@ -468,90 +522,17 @@ class _HomeViewState extends State<HomeView> {
                                   if (_intakeEvents
                                       .isNotEmpty) // removed display as per request
                                     const SizedBox.shrink(),
+                                  // Timing list removed per request
                                   const SizedBox(height: 4),
-                                  Expanded(
-                                    child: ListView(
-                                      padding: EdgeInsets.zero,
-                                      children: waterArr.map((wObj) {
-                                        var isLast = wObj == waterArr.last;
-                                        return Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Column(
-                                              children: [
-                                                Container(
-                                                  margin:
-                                                      const EdgeInsets.symmetric(
-                                                        vertical: 4,
-                                                      ),
-                                                  width: 10,
-                                                  height: 10,
-                                                  decoration: BoxDecoration(
-                                                    color: TColor
-                                                        .secondaryColor1
-                                                        .withOpacity(0.5),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          5,
-                                                        ),
-                                                  ),
-                                                ),
-                                                if (!isLast)
-                                                  DottedDashedLine(
-                                                    height: media.width * 0.07,
-                                                    width: 0,
-                                                    dashColor: TColor
-                                                        .secondaryColor1
-                                                        .withOpacity(0.5),
-                                                    axis: Axis.vertical,
-                                                  ),
-                                              ],
-                                            ),
-                                            const SizedBox(width: 10),
-                                            Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  wObj['title'].toString(),
-                                                  style: TextStyle(
-                                                    color: TColor.gray,
-                                                    fontSize: 10,
-                                                  ),
-                                                ),
-                                                ShaderMask(
-                                                  blendMode: BlendMode.srcIn,
-                                                  shaderCallback: (b) =>
-                                                      LinearGradient(
-                                                        colors:
-                                                            TColor.secondaryG,
-                                                        begin: Alignment
-                                                            .centerLeft,
-                                                        end: Alignment
-                                                            .centerRight,
-                                                      ).createShader(
-                                                        Rect.fromLTWH(
-                                                          0,
-                                                          0,
-                                                          b.width,
-                                                          b.height,
-                                                        ),
-                                                      ),
-                                                  child: Text(
-                                                    wObj['subtitle'].toString(),
-                                                    style: TextStyle(
-                                                      color: TColor.white
-                                                          .withOpacity(0.7),
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        );
-                                      }).toList(),
+                                  const SizedBox(height: 8),
+                                  Center(
+                                    child: Image.asset(
+                                      'assets/img/w1.png',
+                                      width: 100,
+                                      height: 100,
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (c, e, s) =>
+                                          const SizedBox.shrink(),
                                     ),
                                   ),
                                 ],
@@ -609,7 +590,7 @@ class _HomeViewState extends State<HomeView> {
                                     );
                                   },
                                   child: Text(
-                                    "8h 20m",
+                                    _sleepDurationText(),
                                     style: TextStyle(
                                       color: TColor.white.withOpacity(0.7),
                                       fontWeight: FontWeight.w700,
@@ -884,36 +865,54 @@ class _HomeViewState extends State<HomeView> {
       ];
     }
 
-    // Cap BMI for display
-    final double cappedBMI = userBMI.clamp(0, 40);
-
-    // BMI category breakpoints (upper bounds)
     final categories = [
-      {'label': 'Under', 'max': 18.5, 'color': Colors.blueAccent},
-      {'label': 'Normal', 'max': 24.9, 'color': Colors.green},
-      {'label': 'Over', 'max': 29.9, 'color': Colors.orange},
-      {'label': 'Obese', 'max': 40.0, 'color': Colors.red},
+      {
+        'label': 'Under',
+        'range': '<18.5',
+        'color': Colors.blueAccent,
+        'min': 0.0,
+        'max': 18.5,
+      },
+      {
+        'label': 'Normal',
+        'range': '18.5-24.9',
+        'color': Colors.green,
+        'min': 18.5,
+        'max': 24.9,
+      },
+      {
+        'label': 'Over',
+        'range': '25-29.9',
+        'color': Colors.orange,
+        'min': 24.9,
+        'max': 29.9,
+      },
+      {
+        'label': 'Obese',
+        'range': '30+',
+        'color': Colors.red,
+        'min': 29.9,
+        'max': 100.0,
+      },
     ];
 
-    double previousMax = 0;
-    return categories.map((cat) {
-      final double max = cat['max'] as double;
-      final double slice =
-          max - previousMax; // size proportional within 0-40 scale
-      previousMax = max;
-      final bool isUserCategory = cappedBMI <= max;
+    final bmi = userBMI;
 
+    return categories.map((cat) {
+      final bool active =
+          bmi >= (cat['min'] as double) && bmi < (cat['max'] as double);
+      final baseColor = cat['color'] as Color;
       return PieChartSectionData(
-        color: cat['color'] as Color,
-        value: slice,
+        color: active ? baseColor : baseColor.withOpacity(0.28),
+        value: 1,
         title: '',
-        radius: isUserCategory ? 58 : 48,
-        badgeWidget: isUserCategory
+        radius: active ? 58 : 48,
+        badgeWidget: active
             ? Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    cappedBMI.toStringAsFixed(1),
+                    bmi.toStringAsFixed(1),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 12,
@@ -925,7 +924,7 @@ class _HomeViewState extends State<HomeView> {
                     style: const TextStyle(
                       color: Colors.white70,
                       fontSize: 10,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],

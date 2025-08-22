@@ -6,7 +6,8 @@ import '../../common_widget/round_button.dart';
 import '../main_tab/main_tab_view.dart';
 
 class WelcomeView extends StatefulWidget {
-  const WelcomeView({super.key});
+  final VoidCallback? onNext;
+  const WelcomeView({Key? key, this.onNext}) : super(key: key);
 
   @override
   State<WelcomeView> createState() => _WelcomeViewState();
@@ -65,12 +66,9 @@ class _WelcomeViewState extends State<WelcomeView> {
               RoundButton(
                 title: "Go To Home",
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const MainTabView(),
-                    ),
-                  );
+                  if (widget.onNext != null) {
+                    widget.onNext!();
+                  }
                 },
               ),
             ],

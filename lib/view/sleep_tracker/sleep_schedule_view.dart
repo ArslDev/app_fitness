@@ -1,11 +1,15 @@
 import 'dart:async';
 
 import 'package:app_fitness/view/sleep_tracker/sleep_add_alarm_view.dart';
-import 'package:calendar_agenda/calendar_agenda.dart';
 
 import 'package:flutter/material.dart';
 import 'package:simple_animation_progress_bar/simple_animation_progress_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:awesome_notifications/awesome_notifications.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
 import '../../common/color_extension.dart';
 import '../../common_widget/round_button.dart';
@@ -19,9 +23,65 @@ class SleepScheduleView extends StatefulWidget {
 }
 
 class _SleepScheduleViewState extends State<SleepScheduleView> {
-  CalendarAgendaController _calendarAgendaControllerAppBar =
-      CalendarAgendaController();
+  // Persist toggle state for Bedtime and Alarm
+  Future<void> _saveToggleState(String key, bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('toggle_$key', value);
+  }
+
+  Future<bool> _loadToggleState(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('toggle_$key') ?? false;
+  }
+  // Notification logic
+  Future<void> _scheduleNotification(String type) async {
+    // Request notification permission
+    final permissionStatus = await Permission.notification.request();
+    if (!permissionStatus.isGranted) return;
+
+    // Initialize timezone only once
+    tz.initializeTimeZones();
+
+    // Get scheduled time
+    DateTime? scheduledTime;
+    String title = '';
+    String body = '';
+    if (type == 'Bedtime') {
+      scheduledTime = _bedTimeForSelected;
+      title = 'Bedtime Reminder';
+      body = 'It\'s time to go to bed!';
+    } else if (type == 'Alarm') {
+      scheduledTime = _alarmTimeForSelected;
+      title = 'Alarm Reminder';
+      body = 'Wake up!';
+    }
+    if (scheduledTime == null) return;
+
+    final tzTime = tz.TZDateTime.from(scheduledTime, tz.local);
+    await AwesomeNotifications().createNotification(
+      content: NotificationContent(
+        id: DateTime.now().millisecondsSinceEpoch % 100000,
+        channelKey: 'basic_channel',
+        title: title,
+        body: body,
+        notificationLayout: NotificationLayout.Default,
+      ),
+      schedule: NotificationCalendar(
+        year: tzTime.year,
+        month: tzTime.month,
+        day: tzTime.day,
+        hour: tzTime.hour,
+        minute: tzTime.minute,
+        second: 0,
+        millisecond: 0,
+        repeats: false,
+        preciseAlarm: true,
+        timeZone: tz.local.name,
+      ),
+    );
+  }
   late DateTime _selectedDateAppBBar;
+  late DateTime _focusedDate;
 
   // Stored schedule for selected date
   DateTime? _bedTimeForSelected;
@@ -140,8 +200,25 @@ class _SleepScheduleViewState extends State<SleepScheduleView> {
     final alarmStr = prefs.getString('sleep_alarm_$base');
     final durMin = prefs.getInt('sleep_duration_min_$base');
     final repeatStr = prefs.getString('sleep_repeat_$base');
-    if (bedStr == null || alarmStr == null || durMin == null)
-      return; // nothing stored
+    if (bedStr == null || alarmStr == null || durMin == null) {
+      setState(() {
+        todaySleepArr[0] = {
+          'name': 'Bedtime',
+          'image': 'assets/img/bed.png',
+          'time': '-',
+          'duration': 'No bedtime set',
+        };
+        todaySleepArr[1] = {
+          'name': 'Alarm',
+          'image': 'assets/img/alaarm.png',
+          'time': '-',
+          'duration': 'No alarm set',
+        };
+      });
+      _bedTimeForSelected = null;
+      _alarmTimeForSelected = null;
+      return;
+    }
     try {
       final bed = DateTime.parse(bedStr);
       final alarm = DateTime.parse(alarmStr);
@@ -212,8 +289,21 @@ class _SleepScheduleViewState extends State<SleepScheduleView> {
   void initState() {
     super.initState();
     _selectedDateAppBBar = DateTime.now();
+    _focusedDate = DateTime.now();
     _loadForDate(_selectedDateAppBBar);
     _startSummaryTicker();
+    _restoreToggleStates();
+
+  }
+
+  // Restore toggle states for Bedtime and Alarm
+  Future<void> _restoreToggleStates() async {
+    final bedtimeToggle = await _loadToggleState('Bedtime');
+    final alarmToggle = await _loadToggleState('Alarm');
+    setState(() {
+      todaySleepArr[0]['toggle'] = bedtimeToggle;
+      todaySleepArr[1]['toggle'] = alarmToggle;
+    });
   }
 
   void _startSummaryTicker() {
@@ -243,7 +333,8 @@ class _SleepScheduleViewState extends State<SleepScheduleView> {
   Map<String, dynamic> _sleepSummaryNow() {
     if (_bedTimeForSelected == null || _alarmTimeForSelected == null) {
       return {
-        'text': 'Set your bedtime & alarm',
+        'text':
+            'No sleep schedule set for this day. Please add your bedtime and alarm.',
         'ratio': 0.0,
         'percentLabel': '0%',
       };
@@ -312,27 +403,6 @@ class _SleepScheduleViewState extends State<SleepScheduleView> {
             fontWeight: FontWeight.w700,
           ),
         ),
-        actions: [
-          InkWell(
-            onTap: () {},
-            child: Container(
-              margin: const EdgeInsets.all(8),
-              height: 40,
-              width: 40,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: TColor.lightGray,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Image.asset(
-                "assets/img/more_btn.png",
-                width: 15,
-                height: 15,
-                fit: BoxFit.contain,
-              ),
-            ),
-          ),
-        ],
       ),
       backgroundColor: TColor.white,
       body: SingleChildScrollView(
@@ -417,59 +487,6 @@ class _SleepScheduleViewState extends State<SleepScheduleView> {
                     ),
                   ),
                 ),
-                CalendarAgenda(
-                  controller: _calendarAgendaControllerAppBar,
-                  appbar: false,
-                  selectedDayPosition: SelectedDayPosition.center,
-                  leading: IconButton(
-                    onPressed: () {},
-                    icon: Image.asset(
-                      "assets/img/ArrowLeft.png",
-                      width: 15,
-                      height: 15,
-                    ),
-                  ),
-                  // training: IconButton(
-                  //     onPressed: () {},
-                  //     icon: Image.asset(
-                  //       "assets/img/ArrowRight.png",
-                  //       width: 15,
-                  //       height: 15,
-                  //     )),
-                  // weekDay: WeekDay.short,
-                  // dayNameFontSize: 12,
-                  // dayNumberFontSize: 16,
-                  // dayBGColor: Colors.grey.withOpacity(0.15),
-                  // titleSpaceBetween: 15,
-                  backgroundColor: Colors.transparent,
-                  // fullCalendar: false,
-                  fullCalendarScroll: FullCalendarScroll.horizontal,
-                  fullCalendarDay: WeekDay.short,
-                  selectedDateColor: TColor.primaryColor2,
-                  dateColor: Colors.black,
-                  locale: 'en',
-
-                  initialDate: DateTime.now(),
-                  calendarEventColor: TColor.primaryColor2,
-                  firstDate: DateTime.now().subtract(const Duration(days: 140)),
-                  lastDate: DateTime.now().add(const Duration(days: 60)),
-
-                  onDateSelected: (date) {
-                    _selectedDateAppBBar = date;
-                    _loadForDate(date);
-                  },
-                  // selectedDayLogo: Container(
-                  //   width: double.maxFinite,
-                  //   height: double.maxFinite,
-                  //   decoration: BoxDecoration(
-                  //     gradient: LinearGradient(
-                  //         colors: TColor.primaryG,
-                  //         begin: Alignment.topCenter,
-                  //         end: Alignment.bottomCenter),
-                  //     borderRadius: BorderRadius.circular(10.0),
-                  //   ),
-                  // ),
-                ),
                 SizedBox(height: media.width * 0.03),
                 ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -478,7 +495,24 @@ class _SleepScheduleViewState extends State<SleepScheduleView> {
                   itemCount: todaySleepArr.length,
                   itemBuilder: (context, index) {
                     var sObj = todaySleepArr[index] as Map? ?? {};
-                    return TodaySleepScheduleRow(sObj: sObj);
+                    final toggleKey = sObj['name'] ?? '';
+                    final initialToggle = sObj['toggle'] ?? false;
+                    return TodaySleepScheduleRow(
+                      sObj: sObj,
+                      initialToggle: initialToggle,
+                      onToggleChanged: (isOn) async {
+                        await _saveToggleState(toggleKey, isOn);
+                        setState(() {
+                          todaySleepArr[index]['toggle'] = isOn;
+                        });
+                        if (isOn && sObj['time'] != '-' && sObj['time'].toString().trim().isNotEmpty) {
+                          await _scheduleNotification(sObj['name']);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('${sObj['name']} notification scheduled!')),
+                          );
+                        }
+                      },
+                    );
                   },
                 ),
                 Container(

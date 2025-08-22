@@ -40,11 +40,17 @@ dependencies:
   dotted_dashed_line: ^0.0.3
   simple_circular_progress_bar: ^1.0.2
   animated_toggle_switch: ^0.6.2
+  awesome_notifications: ^0.10.1
   readmore: ^2.1.0
   shared_preferences: ^2.5.3
-  calendar_agenda: ^0.0.2+3
+  permission_handler: ^12.0.1
+  timezone: ^0.10.1
 
-  intl: ^0.17.0
+
+
+
+
+  intl: ^0.20.0
 
 
 

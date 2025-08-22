@@ -17,98 +17,73 @@ class _MainTabViewState extends State<MainTabView> {
   int selectTab = 0;
   final PageStorageBucket pageBucket = PageStorageBucket();
   Widget currentTab = const HomeView();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: TColor.white,
       body: PageStorage(bucket: pageBucket, child: currentTab),
-      // floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: SizedBox(
-        width: 70,
-        height: 70,
-        child: InkWell(
-          onTap: () {},
-          child: Container(
-            width: 65,
-            height: 65,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: TColor.primaryG),
-              borderRadius: BorderRadius.circular(35),
-              boxShadow: const [
-                BoxShadow(color: Colors.black12, blurRadius: 2),
-              ],
-            ),
-            child: Icon(Icons.search, color: TColor.white, size: 35),
+      bottomNavigationBar: Container(
+
+        decoration: BoxDecoration(
+          color: TColor.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 8,
+              offset: Offset(0, -2),
+            ),
+          ],
+        ),
+        height: 56, // <-- reduced height
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _buildTabButton(0, "assets/img/home_tab.png", "assets/img/home_tab_select.png", const HomeView()),
+            _buildTabButton(1, "assets/img/activity_tab.png", "assets/img/activity_tab_select.png", const SelectView()),
+            _buildTabButton(3, "assets/img/profile_tab.png", "assets/img/profile_tab_select.png", const ProfileView()),
+          ],
         ),
       ),
-      bottomNavigationBar: BottomAppBar(
-        child: Container(
-          decoration: BoxDecoration(
-            color: TColor.white,
-            boxShadow: const [
-              BoxShadow(
-                color: Colors.black12,
-                blurRadius: 2,
-                offset: Offset(0, -2),
-              ),
-            ],
-          ),
-          height: kToolbarHeight,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              TabButton(
-                icon: "assets/img/home_tab.png",
-                selectIcon: "assets/img/home_tab_select.png",
-                isActive: selectTab == 0,
-                onTap: () {
-                  selectTab = 0;
-                  currentTab = const HomeView();
-                  if (mounted) {
-                    setState(() {});
-                  }
-                },
-              ),
-              TabButton(
-                icon: "assets/img/activity_tab.png",
-                selectIcon: "assets/img/activity_tab_select.png",
-                isActive: selectTab == 1,
-                onTap: () {
-                  selectTab = 1;
-                  currentTab = const SelectView();
-                  if (mounted) {
-                    setState(() {});
-                  }
-                },
-              ),
+    );
+  }
 
-              // const SizedBox(width: 40),
-              // TabButton(
-              //     icon: "assets/img/camera_tab.png",
-              //     selectIcon: "assets/img/camera_tab_select.png",
-              //     isActive: selectTab == 2,
-              //     onTap: () {
-              //       selectTab = 2;
-              //       currentTab = const PhotoProgressView();
-              //       if (mounted) {
-              //         setState(() {});
-              //       }
-              //     }),
-              TabButton(
-                icon: "assets/img/profile_tab.png",
-                selectIcon: "assets/img/profile_tab_select.png",
-                isActive: selectTab == 3,
-                onTap: () {
-                  selectTab = 3;
-                  currentTab = const ProfileView();
-                  if (mounted) {
-                    setState(() {});
-                  }
-                },
+  Widget _buildTabButton(int index, String icon, String selectIcon, Widget view) {
+    return Expanded(
+      child: InkWell(
+        onTap: () {
+          selectTab = index;
+          currentTab = view;
+          if (mounted) setState(() {});
+        },
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            TabButton(
+              icon: icon,
+              selectIcon: selectIcon,
+              isActive: selectTab == index,
+              onTap: () {
+                selectTab = index;
+                currentTab = view;
+                if (mounted) setState(() {});
+              },
+            ),
+            const SizedBox(height: 4),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              height: 6,
+              width: selectTab == index ? 48 : 0,
+              decoration: BoxDecoration(
+                color: selectTab == index ? Colors.black : Colors.transparent,
+                borderRadius: BorderRadius.circular(3),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

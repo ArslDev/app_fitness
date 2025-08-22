@@ -22,6 +22,7 @@ class _ProfileViewState extends State<ProfileView> {
   double userWeight = 0;
   double userHeight = 0;
   int userAge = 0;
+  String userGender = "";
 
   List accountArr = [
     {"image": "assets/img/p_personal.png", "name": "Personal Data", "tag": "1"},
@@ -57,6 +58,7 @@ class _ProfileViewState extends State<ProfileView> {
       userWeight = prefs.getDouble('user_weight') ?? 0;
       userHeight = prefs.getDouble('user_height') ?? 0;
       userAge = _calculateAge(userDob);
+      userGender = prefs.getString('user_gender') ?? "";
     });
   }
 
@@ -97,7 +99,6 @@ class _ProfileViewState extends State<ProfileView> {
             fontWeight: FontWeight.w700,
           ),
         ),
-
       ),
       backgroundColor: TColor.white,
       body: SingleChildScrollView(
@@ -111,7 +112,9 @@ class _ProfileViewState extends State<ProfileView> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(30),
                     child: Image.asset(
-                      "assets/img/u2.png",
+                      userGender == "Male"
+                          ? "assets/img/u1.png"
+                          : "assets/img/u2.png",
                       width: 50,
                       height: 50,
                       fit: BoxFit.cover,

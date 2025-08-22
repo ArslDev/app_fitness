@@ -1,3 +1,4 @@
+import 'package:app_fitness/view/home/home_view.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
@@ -295,7 +296,7 @@ class _MealPlannerViewState extends State<MealPlannerView> {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) =>
-                                  const MealScheduleView(),
+                                  const HomeView(),
                                 ),
                               );
                             },
