@@ -1,8 +1,14 @@
 import 'dart:async';
-import 'package:app_fitness/view/sleep_tracker/sleep_schedule_view.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:app_fitness/view/sleep_tracker/sleep_add_alarm_view.dart';
+import 'package:simple_animation_progress_bar/simple_animation_progress_bar.dart';
+
+import 'package:awesome_notifications/awesome_notifications.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
 import '../../common/color_extension.dart';
 import '../../common_widget/round_button.dart';
@@ -16,11 +22,64 @@ class SleepTrackerView extends StatefulWidget {
 }
 
 class _SleepTrackerViewState extends State<SleepTrackerView> {
+  // Persist toggle state for Bedtime and Alarm
+  Future<void> _saveToggleState(String key, bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('toggle_$key', value);
+  }
+
+  Future<bool> _loadToggleState(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('toggle_$key') ?? false;
+  }
+
+  Future<void> _scheduleNotification(String type) async {
+    final permissionStatus = await Permission.notification.request();
+    if (!permissionStatus.isGranted) return;
+    tz.initializeTimeZones();
+    DateTime? scheduledTime;
+    String title = '';
+    String body = '';
+    if (type == 'Bedtime') {
+      scheduledTime = _bedTime;
+      title = 'Bedtime Reminder';
+      body = 'It\'s time to go to bed!';
+    } else if (type == 'Alarm') {
+      scheduledTime = _alarmTime;
+      title = 'Alarm Reminder';
+      body = 'Wake up!';
+    }
+    if (scheduledTime == null) return;
+    final tzTime = tz.TZDateTime.from(scheduledTime, tz.local);
+    await AwesomeNotifications().createNotification(
+      content: NotificationContent(
+        id: DateTime.now().millisecondsSinceEpoch % 100000,
+        channelKey: 'basic_channel',
+        title: title,
+        body: body,
+        notificationLayout: NotificationLayout.Default,
+      ),
+      schedule: NotificationCalendar(
+        year: tzTime.year,
+        month: tzTime.month,
+        day: tzTime.day,
+        hour: tzTime.hour,
+        minute: tzTime.minute,
+        second: 0,
+        millisecond: 0,
+        repeats: false,
+        preciseAlarm: true,
+        timeZone: tz.local.name,
+      ),
+    );
+  }
+
   // Populated from saved schedule (today)
   List todaySleepArr = [];
   DateTime? _bedTime;
   DateTime? _alarmTime;
   Timer? _ticker;
+
   // Weekly dynamic sleep hours (Sun..Sat => x:1..7)
   List<FlSpot> _weeklySpots = const [
     FlSpot(1, 0),
@@ -127,6 +186,9 @@ class _SleepTrackerViewState extends State<SleepTrackerView> {
         return '${h}h ${m}m';
       }
 
+      // Load toggle states for Bedtime and Alarm
+      final bedtimeToggle = await _loadToggleState('Bedtime');
+      final alarmToggle = await _loadToggleState('Alarm');
       setState(() {
         todaySleepArr = [
           {
@@ -134,6 +196,7 @@ class _SleepTrackerViewState extends State<SleepTrackerView> {
             'image': 'assets/img/bed.png',
             'time': fmt(bed),
             'duration': remainingUntil(bed),
+            'toggle': bedtimeToggle,
           },
           {
             'name': 'Alarm',
@@ -141,6 +204,7 @@ class _SleepTrackerViewState extends State<SleepTrackerView> {
             'time': fmt(alarm),
             'duration':
                 '${durTxt(duration)} | ${repeatLabel()} | ${remainingUntil(alarm)}',
+            'toggle': alarmToggle,
           },
         ];
       });
@@ -464,34 +528,103 @@ class _SleepTrackerViewState extends State<SleepTrackerView> {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        SizedBox(
-                          width: 70,
-                          height: 25,
-                          child: RoundButton(
-                            title: "Check",
-                            type: RoundButtonType.bgGradient,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                            onPressed: () async {
-                              // Navigate to schedule view; when returning, force reload so updates appear instantly
-                              await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const SleepScheduleView(),
-                                ),
-                              );
-                              if (!mounted) return;
-                              await _loadToday();
-                              await _loadWeekly();
-                              _updateTodaySpot();
-                            },
-                          ),
-                        ),
                       ],
                     ),
                   ),
                   SizedBox(height: media.width * 0.05),
+                  // Sleep Progress Bar (added)
+                  Builder(
+                    builder: (context) {
+                      const int idealSleepMinutes = 8 * 60 + 30; // 8h30m
+                      double ratio = 0.0;
+                      String label = '0%';
+                      if (_bedTime != null && _alarmTime != null) {
+                        DateTime bed = _bedTime!;
+                        DateTime alarm = _alarmTime!;
+                        if (alarm.isBefore(bed)) {
+                          alarm = alarm.add(const Duration(days: 1));
+                        }
+                        final now = DateTime.now();
+                        final scheduledMinutes = alarm
+                            .difference(bed)
+                            .inMinutes;
+                        if (now.isBefore(bed)) {
+                          ratio = (scheduledMinutes / idealSleepMinutes).clamp(
+                            0.0,
+                            1.0,
+                          );
+                        } else if (now.isAfter(alarm)) {
+                          ratio = (scheduledMinutes / idealSleepMinutes).clamp(
+                            0.0,
+                            1.0,
+                          );
+                        } else {
+                          final slept = now.difference(bed).inMinutes;
+                          ratio = (slept / idealSleepMinutes).clamp(0.0, 1.0);
+                        }
+                        label = '${(ratio * 100).toStringAsFixed(0)}%';
+                      }
+                      return Container(
+                        width: double.maxFinite,
+                        padding: const EdgeInsets.all(16),
+                        margin: const EdgeInsets.only(bottom: 15),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              TColor.secondaryColor2.withOpacity(0.35),
+                              TColor.secondaryColor1.withOpacity(0.35),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Sleep Progress',
+                              style: TextStyle(
+                                color: TColor.black,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                SimpleAnimationProgressBar(
+                                  height: 15,
+                                  width: media.width - 80,
+                                  backgroundColor: Colors.grey.shade100,
+                                  foregroundColor: TColor.primaryColor1,
+                                  ratio: ratio,
+                                  direction: Axis.horizontal,
+                                  curve: Curves.fastLinearToSlowEaseIn,
+                                  duration: const Duration(seconds: 1),
+                                  borderRadius: BorderRadius.circular(7.5),
+                                  gradientColor: LinearGradient(
+                                    colors: TColor.secondaryG,
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                  ),
+                                ),
+                                Text(
+                                  label,
+                                  style: TextStyle(
+                                    color: TColor.black,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
                   Text(
                     "Today Schedule",
                     style: TextStyle(
@@ -509,7 +642,30 @@ class _SleepTrackerViewState extends State<SleepTrackerView> {
                       itemCount: todaySleepArr.length,
                       itemBuilder: (context, index) {
                         var sObj = todaySleepArr[index] as Map? ?? {};
-                        return TodaySleepScheduleRow(sObj: sObj);
+                        final toggleKey = sObj['name'] ?? '';
+                        final initialToggle = sObj['toggle'] ?? false;
+                        return TodaySleepScheduleRow(
+                          sObj: sObj,
+                          initialToggle: initialToggle,
+                          onToggleChanged: (isOn) async {
+                            await _saveToggleState(toggleKey, isOn);
+                            setState(() {
+                              todaySleepArr[index]['toggle'] = isOn;
+                            });
+                            if (isOn &&
+                                sObj['time'] != '-' &&
+                                sObj['time'].toString().trim().isNotEmpty) {
+                              await _scheduleNotification(sObj['name']);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    '${sObj['name']} notification scheduled!',
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                        );
                       },
                     )
                   else
@@ -523,8 +679,57 @@ class _SleepTrackerViewState extends State<SleepTrackerView> {
                 ],
               ),
             ),
-            SizedBox(height: media.width * 0.05),
+            SizedBox(height: media.width * 0.2),
           ],
+        ),
+      ),
+      floatingActionButton: InkWell(
+        onTap: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => SleepAddAlarmView(date: DateTime.now()),
+            ),
+          );
+          if (result is Map) {
+            try {
+              final bed = DateTime.parse(result['bedTime']);
+              final alarm = DateTime.parse(result['alarmTime']);
+              final durationMinutes = result['durationMinutes'] as int? ?? 0;
+              final repeatDays =
+                  (result['repeatDays'] as List?)?.cast<int>() ?? [];
+              final prefs = await SharedPreferences.getInstance();
+              final now = DateTime.now();
+              final base = _dateKey(now);
+              await prefs.setString('sleep_bed_$base', bed.toIso8601String());
+              await prefs.setString(
+                'sleep_alarm_$base',
+                alarm.toIso8601String(),
+              );
+              await prefs.setInt('sleep_duration_min_$base', durationMinutes);
+              await prefs.setString('sleep_repeat_$base', repeatDays.join(','));
+              await _loadToday();
+              await _loadWeekly();
+              _updateTodaySpot();
+            } catch (_) {}
+          }
+        },
+        child: Container(
+          width: 55,
+          height: 55,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: TColor.secondaryG),
+            borderRadius: BorderRadius.circular(27.5),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black12,
+                blurRadius: 5,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          alignment: Alignment.center,
+          child: Icon(Icons.add, size: 20, color: TColor.white),
         ),
       ),
     );

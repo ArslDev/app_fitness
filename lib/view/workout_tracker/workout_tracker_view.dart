@@ -1,7 +1,8 @@
 import 'package:app_fitness/view/workout_tracker/workour_detail_view.dart';
-
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 import '../../common/color_extension.dart';
 import '../../common_widget/upcoming_workout_row.dart';
@@ -49,6 +50,52 @@ class _WorkoutTrackerViewState extends State<WorkoutTrackerView> {
     },
   ];
 
+  // Loaded schedules keyed by lowercase workout name.
+  Map<String, DateTime> _schedules = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSchedules();
+  }
+
+  Future<void> _loadSchedules() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('workout_schedules');
+      if (raw == null) return;
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return;
+      final Map<String, DateTime> map = {};
+      for (final e in decoded) {
+        if (e is Map && e['name'] != null && e['ts'] != null) {
+          final dt = DateTime.tryParse(e['ts'].toString());
+          if (dt != null) {
+            map[(e['name'] as String).trim().toLowerCase()] = dt;
+          }
+        }
+      }
+      if (mounted) {
+        setState(() => _schedules = map);
+      }
+    } catch (_) {}
+  }
+
+  String _formatSchedule(DateTime dt) {
+    int hour = dt.hour % 12;
+    if (hour == 0) hour = 12;
+    final minute = dt.minute.toString().padLeft(2, '0');
+    final ampm = dt.hour >= 12 ? 'PM' : 'AM';
+    // If same day show Today label else show date.
+    final now = DateTime.now();
+    final isToday =
+        dt.year == now.year && dt.month == now.month && dt.day == now.day;
+    if (isToday) {
+      return 'Today, $hour:$minute$ampm';
+    }
+    return '${dt.month}/${dt.day}, $hour:$minute$ampm';
+  }
+
   @override
   Widget build(BuildContext context) {
     var media = MediaQuery.of(context).size;
@@ -93,7 +140,6 @@ class _WorkoutTrackerViewState extends State<WorkoutTrackerView> {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-
             ),
             SliverAppBar(
               backgroundColor: Colors.transparent,
@@ -238,17 +284,6 @@ class _WorkoutTrackerViewState extends State<WorkoutTrackerView> {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      TextButton(
-                        onPressed: () {},
-                        child: Text(
-                          "See More",
-                          style: TextStyle(
-                            color: TColor.gray,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                   ListView.builder(
@@ -257,7 +292,16 @@ class _WorkoutTrackerViewState extends State<WorkoutTrackerView> {
                     shrinkWrap: true,
                     itemCount: latestArr.length,
                     itemBuilder: (context, index) {
-                      var wObj = latestArr[index] as Map? ?? {};
+                      var wObj = Map<String, dynamic>.from(
+                        latestArr[index] as Map? ?? {},
+                      );
+                      final key = (wObj['title'] ?? '')
+                          .toString()
+                          .trim()
+                          .toLowerCase();
+                      if (_schedules.containsKey(key)) {
+                        wObj['time'] = _formatSchedule(_schedules[key]!);
+                      }
                       return UpcomingWorkoutRow(wObj: wObj);
                     },
                   ),
@@ -283,14 +327,16 @@ class _WorkoutTrackerViewState extends State<WorkoutTrackerView> {
                     itemBuilder: (context, index) {
                       var wObj = whatArr[index] as Map? ?? {};
                       return InkWell(
-                        onTap: () {
-                          Navigator.push(
+                        onTap: () async {
+                          await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
                                   WorkoutDetailView(dObj: wObj),
                             ),
                           );
+                          // Refresh schedules after returning (in case user set one)
+                          _loadSchedules();
                         },
                         child: WhatTrainRow(wObj: wObj),
                       );

@@ -1,14 +1,10 @@
-
 import 'package:app_fitness/nitification_test.dart';
 import 'package:app_fitness/view/sleep_tracker/sleep_tracker_view.dart';
 import 'package:flutter/material.dart';
 
 import '../../common_widget/round_button.dart';
-import '../meal_planner/meal_planner_view.dart';
-import '../workout_tracker/workout_tracker_view.dart' ;
 
-
-
+import '../workout_tracker/workout_tracker_view.dart';
 
 class SelectView extends StatelessWidget {
   const SelectView({super.key});
@@ -24,41 +20,38 @@ class SelectView extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             RoundButton(
-                title: "Workout Tracker",
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>  WorkoutTrackerView(),
-                    ),
-                  );
-                }),
+              title: "Workout Tracker",
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => WorkoutTrackerView()),
+                );
+              },
+            ),
 
-            const SizedBox(height: 15,),
-
-            RoundButton(
-                title: "Notification test",
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>  testNotification(),
-                    ),
-                  );
-                }),
-
-            const SizedBox(height: 15,),
+            const SizedBox(height: 15),
 
             RoundButton(
-                title: "Sleep Tracker",
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => SleepTrackerView(),
-                    ),
-                  );
-                })
+              title: "Notification test",
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => testNotification()),
+                );
+              },
+            ),
+
+            const SizedBox(height: 15),
+
+            RoundButton(
+              title: "Sleep Tracker",
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => SleepTrackerView()),
+                );
+              },
+            ),
           ],
         ),
       ),

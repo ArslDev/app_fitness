@@ -1,3 +1,4 @@
+import 'package:app_fitness/view/workout_tracker/exercies_view.dart';
 import 'package:app_fitness/view/workout_tracker/exercises_stpe_details.dart';
 import 'package:flutter/material.dart';
 import 'package:app_fitness/view/workout_tracker/add_schedule_view.dart';
@@ -35,7 +36,8 @@ class _WorkoutDetailViewState extends State<WorkoutDetailView> {
     try {
       final decoded = jsonDecode(raw);
       if (decoded is List) {
-        final name = widget.dObj['title']?.toString().trim().toLowerCase() ?? '';
+        final name =
+            widget.dObj['title']?.toString().trim().toLowerCase() ?? '';
         final List<DateTime> times = [];
         for (final e in decoded) {
           final eName = (e['name'] ?? '').toString().trim().toLowerCase();
@@ -157,27 +159,6 @@ class _WorkoutDetailViewState extends State<WorkoutDetailView> {
                   ),
                 ),
               ),
-              actions: [
-                InkWell(
-                  onTap: () {},
-                  child: Container(
-                    margin: const EdgeInsets.all(8),
-                    height: 40,
-                    width: 40,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: TColor.lightGray,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Image.asset(
-                      "assets/img/more_btn.png",
-                      width: 15,
-                      height: 15,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                ),
-              ],
             ),
             SliverAppBar(
               backgroundColor: Colors.transparent,
@@ -264,17 +245,25 @@ class _WorkoutDetailViewState extends State<WorkoutDetailView> {
                       IconTitleNextRow(
                         icon: "assets/img/time.png",
                         title: "Schedule Workout",
-                        time: _nextScheduled == null
-                            ? "No schedule"
-                            : "${_nextScheduled!.month}/${_nextScheduled!.day}, ${_nextScheduled!.hour.toString().padLeft(2, '0')}:${_nextScheduled!.minute.toString().padLeft(2, '0')}"
-                        ,
+                        time: () {
+                          if (_nextScheduled == null) return "Set schedule";
+                          final dt = _nextScheduled!;
+                          int hour = dt.hour % 12;
+                          if (hour == 0) hour = 12;
+                          final ampm = dt.hour >= 12 ? 'PM' : 'AM';
+                          final minute = dt.minute.toString().padLeft(2, '0');
+                          return "${dt.month}/${dt.day} $hour:$minute $ampm";
+                        }(),
                         color: TColor.primaryColor2.withOpacity(0.3),
                         onPressed: () async {
                           final result = await Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) =>
-                                  AddScheduleView(date: DateTime.now()),
+                              builder: (context) => AddScheduleView(
+                                date: DateTime.now(),
+                                workoutName: widget.dObj['title']?.toString(),
+                                initialDateTime: _nextScheduled,
+                              ),
                             ),
                           );
                           if (result == true) {
@@ -282,14 +271,8 @@ class _WorkoutDetailViewState extends State<WorkoutDetailView> {
                           }
                         },
                       ),
-                      SizedBox(height: media.width * 0.02),
-                      IconTitleNextRow(
-                        icon: "assets/img/difficulity.png",
-                        title: "Difficulity",
-                        time: "Beginner",
-                        color: TColor.secondaryColor2.withOpacity(0.3),
-                        onPressed: () {},
-                      ),
+
+
                       SizedBox(height: media.width * 0.05),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -393,11 +376,13 @@ class _WorkoutDetailViewState extends State<WorkoutDetailView> {
                           return ExercisesSetSection(
                             sObj: sObj,
                             onPressed: (obj) {
+                              // Pass the whole set and the clicked exercise so details screen can preselect image
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) =>
-                                      ExercisesStepDetails(eObj: obj),
+                                  builder: (context) => ExercisesStepDetails(
+                                    eObj: {...sObj, 'preselect': obj},
+                                  ),
                                 ),
                               );
                             },
@@ -413,7 +398,42 @@ class _WorkoutDetailViewState extends State<WorkoutDetailView> {
                     mainAxisSize: MainAxisSize.max,
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      RoundButton(title: "Start Workout", onPressed: () {}),
+                      RoundButton(
+                        title: "Start Workout",
+                        onPressed: () {
+                          // Flatten all sets into a single steps list for ExerciesView
+                          int counter = 1;
+                          List<Map<String, dynamic>> steps = [];
+                          for (final set in exercisesArr) {
+                            final setName = (set['name'] ?? '').toString();
+                            final list = (set['set'] as List?) ?? [];
+                            for (final item in list) {
+                              if (item is Map) {
+                                final title = item['title']?.toString() ?? '';
+                                final value = item['value']?.toString();
+                                // Force every exercise (including rest) to 20 seconds as per requirement
+                                const int seconds = 20;
+                                steps.add({
+                                  'no': counter.toString().padLeft(2, '0'),
+                                  'title': title,
+                                  'detail': '$setName - $title',
+                                  'image': item['image'],
+                                  'seconds': seconds,
+                                  'value': value,
+                                });
+                                counter++;
+                              }
+                            }
+                          }
+                          if (steps.isEmpty) return;
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ExerciesView(steps: steps),
+                            ),
+                          );
+                        },
+                      ),
                     ],
                   ),
                 ),

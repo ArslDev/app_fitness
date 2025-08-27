@@ -102,86 +102,12 @@ class _WorkoutScheduleViewState extends State<WorkoutScheduleView> {
             fontWeight: FontWeight.w700,
           ),
         ),
-        actions: [
-          InkWell(
-            onTap: () {},
-            child: Container(
-              margin: const EdgeInsets.all(8),
-              height: 40,
-              width: 40,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: TColor.lightGray,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Image.asset(
-                "assets/img/more_btn.png",
-                width: 15,
-                height: 15,
-                fit: BoxFit.contain,
-              ),
-            ),
-          ),
-        ],
       ),
       backgroundColor: TColor.white,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // TableCalendar replaces CalendarAgenda
-            // TableCalendar(
-            //   firstDay: DateTime.now().subtract(const Duration(days: 140)),
-            //   lastDay: DateTime.now().add(const Duration(days: 60)),
-            //   focusedDay: _focusedDate,
-            //   selectedDayPredicate: (day) {
-            //     return isSameDay(_selectedDateAppBBar, day);
-            //   },
-            //   onDaySelected: (selectedDay, focusedDay) {
-            //     setState(() {
-            //       _selectedDateAppBBar = selectedDay;
-            //       _focusedDate = focusedDay;
-            //       setDayEventWorkoutList();
-            //     });
-            //   },
-            //   headerStyle: HeaderStyle(
-            //     formatButtonVisible: false,
-            //     titleCentered: true,
-            //     leftChevronIcon: Image.asset(
-            //       "assets/img/ArrowLeft.png",
-            //       width: 15,
-            //       height: 15,
-            //     ),
-            //     rightChevronIcon: Image.asset(
-            //       "assets/img/ArrowRight.png",
-            //       width: 15,
-            //       height: 15,
-            //     ),
-            //     headerPadding: const EdgeInsets.symmetric(vertical: 8),
-            //   ),
-            //   calendarStyle: CalendarStyle(
-            //     selectedDecoration: BoxDecoration(
-            //       color: Colors.white,
-            //       shape: BoxShape.circle,
-            //       border: Border.all(
-            //         color: TColor.primaryColor2,
-            //       ),
-            //     ),
-            //     todayDecoration: BoxDecoration(
-            //       color: TColor.primaryColor2.withOpacity(0.15),
-            //       shape: BoxShape.circle,
-            //     ),
-            //     defaultTextStyle: TextStyle(color: Colors.black),
-            //     weekendTextStyle: TextStyle(color: Colors.black),
-            //     selectedTextStyle: TextStyle(color: Colors.black),
-            //   ),
-            //   daysOfWeekStyle: DaysOfWeekStyle(
-            //     weekdayStyle: TextStyle(color: Colors.black),
-            //     weekendStyle: TextStyle(color: Colors.black),
-            //   ),
-            //   locale: 'en',
-            //   availableGestures: AvailableGestures.horizontalSwipe,
-            // ),
             Expanded(
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,

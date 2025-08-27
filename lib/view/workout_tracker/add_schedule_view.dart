@@ -10,7 +10,15 @@ import '../../common_widget/round_button.dart';
 
 class AddScheduleView extends StatefulWidget {
   final DateTime date;
-  const AddScheduleView({super.key, required this.date});
+  final String? workoutName; // optional preselected workout name
+  final DateTime?
+  initialDateTime; // optional preselected time (existing schedule)
+  const AddScheduleView({
+    super.key,
+    required this.date,
+    this.workoutName,
+    this.initialDateTime,
+  });
 
   @override
   State<AddScheduleView> createState() => _AddScheduleViewState();
@@ -19,6 +27,7 @@ class AddScheduleView extends StatefulWidget {
 class _AddScheduleViewState extends State<AddScheduleView> {
   DateTime? _selectedDateTime; // full date + time for schedule
   String _selectedWorkout = 'Fullbody Workout';
+
   // Difficulty fixed (UI removed per request); still stored for compatibility.
   String _difficulty = 'Beginner';
 
@@ -32,14 +41,23 @@ class _AddScheduleViewState extends State<AddScheduleView> {
   @override
   void initState() {
     super.initState();
-    // Default time = now with provided date's year/month/day
-    final now = DateTime.now();
+    // If a workout name was provided from the detail screen, preselect it.
+    if (widget.workoutName != null && widget.workoutName!.trim().isNotEmpty) {
+      _selectedWorkout = widget.workoutName!;
+      // Ensure it exists in the picker list so the checkmark shows.
+      if (!_workouts.contains(_selectedWorkout)) {
+        _workouts.insert(0, _selectedWorkout);
+      }
+    }
+
+    // Default time = existing schedule (if provided) else now with provided date's Y/M/D
+    final base = widget.initialDateTime ?? DateTime.now();
     _selectedDateTime = DateTime(
       widget.date.year,
       widget.date.month,
       widget.date.day,
-      now.hour,
-      now.minute,
+      base.hour,
+      base.minute,
     );
   }
 
@@ -100,6 +118,16 @@ class _AddScheduleViewState extends State<AddScheduleView> {
         if (decoded is List) list = decoded;
       } catch (_) {}
     }
+    // Remove any existing schedule entries for this workout (treating name case-insensitively)
+    final targetName = _selectedWorkout.trim().toLowerCase();
+    list = list.where((e) {
+      if (e is Map &&
+          (e['name'] ?? '').toString().trim().toLowerCase() == targetName) {
+        return false; // drop old
+      }
+      return true;
+    }).toList();
+
     list.add({
       'name': _selectedWorkout,
       'ts': _selectedDateTime!.toIso8601String(),
@@ -147,27 +175,6 @@ class _AddScheduleViewState extends State<AddScheduleView> {
             fontWeight: FontWeight.w700,
           ),
         ),
-        actions: [
-          InkWell(
-            onTap: () {},
-            child: Container(
-              margin: const EdgeInsets.all(8),
-              height: 40,
-              width: 40,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: TColor.lightGray,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Image.asset(
-                "assets/img/more_btn.png",
-                width: 15,
-                height: 15,
-                fit: BoxFit.contain,
-              ),
-            ),
-          ),
-        ],
       ),
       backgroundColor: TColor.white,
       body: Container(

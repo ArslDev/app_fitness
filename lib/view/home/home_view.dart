@@ -11,7 +11,6 @@ import '../../common_widget/round_button.dart';
 import '../../common_widget/workout_row.dart';
 import 'activity_tracker_view.dart';
 import 'finished_workout_view.dart';
-import 'notification_view.dart';
 
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
@@ -27,6 +26,7 @@ class _HomeViewState extends State<HomeView> {
   double userHeight = 0;
   double userBMI = 0;
   String bmiStatus = "";
+
   // Sleep summary (today)
   Duration? _todaySleepDuration; // scheduled or actual if in progress
   Timer? _sleepTicker;
@@ -118,9 +118,11 @@ class _HomeViewState extends State<HomeView> {
   double get _waterProgress => (_dailyWaterTargetLiters > 0)
       ? (_consumedMlToday / 1000.0) / _dailyWaterTargetLiters
       : 0;
+
   String get _waterHeadline => _dailyWaterTargetLiters > 0
       ? '${(_consumedMlToday / 1000).toStringAsFixed(2)} / ${_dailyWaterTargetLiters.toStringAsFixed(1)} L'
       : '${(_consumedMlToday / 1000).toStringAsFixed(2)} L';
+
   String get _waterSub => _dailyWaterTargetLiters <= 0
       ? 'Set your daily target'
       : (_waterProgress >= 1
@@ -241,22 +243,6 @@ class _HomeViewState extends State<HomeView> {
                           style: TextStyle(fontWeight: FontWeight.w700),
                         ),
                       ],
-                    ),
-                    IconButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => NotificationView(),
-                          ),
-                        );
-                      },
-                      icon: Image.asset(
-                        "assets/img/notification_active.png",
-                        width: 25,
-                        height: 25,
-                        fit: BoxFit.fitHeight,
-                      ),
                     ),
                   ],
                 ),
