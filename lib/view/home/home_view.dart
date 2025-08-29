@@ -102,6 +102,22 @@ class _HomeViewState extends State<HomeView> {
 
   Future<void> _addWaterIntake(int ml) async {
     if (ml <= 0) return;
+    if (_dailyWaterTargetLiters <= 0) return; // no target set
+
+    final int targetMl = (_dailyWaterTargetLiters * 1000).round();
+    final int remainingMl = targetMl - _consumedMlToday;
+
+    if (remainingMl <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Daily water target completed')),
+      );
+      return;
+    }
+
+    if (ml > remainingMl) {
+      ml = remainingMl; // cap so we never exceed target
+    }
+
     final prefs = await SharedPreferences.getInstance();
     final k = _todayKey();
     _consumedMlToday += ml;
@@ -457,7 +473,7 @@ class _HomeViewState extends State<HomeView> {
                                       children: [
                                         GestureDetector(
                                           onTap: _dailyWaterTargetLiters <= 0
-                                              ? null
+                                              ? null // no target set
                                               : () => _addWaterIntake(
                                                   _selectedIntakeMl,
                                                 ),

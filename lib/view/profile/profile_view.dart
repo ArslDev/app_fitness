@@ -62,6 +62,342 @@ class _ProfileViewState extends State<ProfileView> {
     });
   }
 
+  Future<void> _saveUserProfile({
+    required String name,
+    required String dob,
+    required double weight,
+    required double height,
+    required String gender,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_name', name.trim());
+    await prefs.setString('user_dob', dob.trim());
+    await prefs.setDouble('user_weight', weight);
+    await prefs.setDouble('user_height', height);
+    await prefs.setString('user_gender', gender);
+    await _loadUserProfile();
+  }
+
+  void _showEditProfileDialog() {
+    final nameCtrl = TextEditingController(text: userName);
+    final dobCtrl = TextEditingController(text: userDob); // dd/MM/yyyy
+    final weightCtrl = TextEditingController(
+      text: userWeight > 0 ? userWeight.toStringAsFixed(1) : '',
+    );
+    final heightCtrl = TextEditingController(
+      text: userHeight > 0 ? userHeight.toStringAsFixed(1) : '',
+    );
+    String genderLocal = userGender.isNotEmpty ? userGender : 'Male';
+    String? nameErr;
+    String? dobErr;
+    String? weightErr;
+    String? heightErr;
+
+    DateTime? _parseDob(String v) {
+      try {
+        final parts = v.split('/');
+        if (parts.length == 3) {
+          final d = int.parse(parts[0]);
+          final m = int.parse(parts[1]);
+          final y = int.parse(parts[2]);
+          return DateTime(y, m, d);
+        }
+      } catch (_) {}
+      return null;
+    }
+
+    void validateAll(StateSetter setInner) {
+      nameErr = nameCtrl.text.trim().isEmpty ? 'Required' : null;
+      final dob = dobCtrl.text.trim();
+      final dt = _parseDob(dob);
+      if (dob.isEmpty) {
+        dobErr = 'Required';
+      } else if (dt == null) {
+        dobErr = 'Invalid (dd/MM/yyyy)';
+      } else if (dt.isAfter(DateTime.now())) {
+        dobErr = 'In future';
+      } else {
+        dobErr = null;
+      }
+      final w = double.tryParse(weightCtrl.text.trim());
+      weightErr = (w == null || w <= 0) ? 'Enter > 0' : null;
+      final h = double.tryParse(heightCtrl.text.trim());
+      heightErr = (h == null || h <= 0) ? 'Enter > 0' : null;
+      setInner(() {});
+    }
+
+    Future<void> pickDob(StateSetter setInner) async {
+      final now = DateTime.now();
+      final initial =
+          _parseDob(dobCtrl.text) ??
+          DateTime(now.year - 18, now.month, now.day);
+      final picked = await showDatePicker(
+        context: context,
+        initialDate: initial,
+        firstDate: DateTime(1900, 1, 1),
+        lastDate: DateTime(now.year, now.month, now.day),
+        helpText: 'Select Date of Birth',
+      );
+      if (picked != null) {
+        dobCtrl.text =
+            '${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}';
+        validateAll(setInner);
+      }
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setInner) {
+            return Dialog(
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 24,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  gradient: LinearGradient(
+                    colors: [
+                      TColor.primaryColor2.withOpacity(0.92),
+                      TColor.primaryColor1.withOpacity(0.92),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Edit Profile',
+                            style: TextStyle(
+                              color: TColor.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            icon: Icon(Icons.close, color: TColor.white),
+                            onPressed: () => Navigator.pop(context),
+                            splashRadius: 20,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      // Name
+                      TextField(
+                        controller: nameCtrl,
+                        style: TextStyle(color: TColor.white),
+                        decoration: InputDecoration(
+                          labelText: 'Name',
+                          labelStyle: TextStyle(color: Colors.white70),
+                          errorText: nameErr,
+                          filled: true,
+                          fillColor: Colors.white.withOpacity(0.12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                        onChanged: (_) => validateAll(setInner),
+                      ),
+                      const SizedBox(height: 12),
+                      // DOB
+                      TextField(
+                        controller: dobCtrl,
+                        readOnly: true,
+                        style: TextStyle(color: TColor.white),
+                        decoration: InputDecoration(
+                          labelText: 'Date of Birth (dd/MM/yyyy)',
+                          labelStyle: TextStyle(color: Colors.white70),
+                          errorText: dobErr,
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              Icons.calendar_today,
+                              color: Colors.white70,
+                              size: 18,
+                            ),
+                            onPressed: () => pickDob(setInner),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white.withOpacity(0.12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                        onTap: () => pickDob(setInner),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: weightCtrl,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              style: TextStyle(color: TColor.white),
+                              decoration: InputDecoration(
+                                labelText: 'Weight (kg)',
+                                labelStyle: TextStyle(color: Colors.white70),
+                                errorText: weightErr,
+                                filled: true,
+                                fillColor: Colors.white.withOpacity(0.12),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: BorderSide.none,
+                                ),
+                              ),
+                              onChanged: (_) => validateAll(setInner),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: heightCtrl,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              style: TextStyle(color: TColor.white),
+                              decoration: InputDecoration(
+                                labelText: 'Height (cm)',
+                                labelStyle: TextStyle(color: Colors.white70),
+                                errorText: heightErr,
+                                filled: true,
+                                fillColor: Colors.white.withOpacity(0.12),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: BorderSide.none,
+                                ),
+                              ),
+                              onChanged: (_) => validateAll(setInner),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Gender',
+                        style: TextStyle(
+                          color: TColor.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 10,
+                        children: ['Male', 'Female'].map((g) {
+                          final selected = genderLocal == g;
+                          return ChoiceChip(
+                            label: Text(g),
+                            selected: selected,
+                            labelStyle: TextStyle(
+                              color: selected ? Colors.white : Colors.black,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            selectedColor: TColor.primaryColor1.withOpacity(
+                              0.6,
+                            ),
+                            backgroundColor: Colors.white.withOpacity(0.12),
+                            onSelected: (_) => setInner(() {
+                              genderLocal = g;
+                            }),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 22),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton(
+                          style:
+                              ElevatedButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                backgroundColor: Colors.transparent,
+                                elevation: 0,
+                              ).merge(
+                                ButtonStyle(
+                                  overlayColor: MaterialStateProperty.all(
+                                    Colors.white.withOpacity(0.08),
+                                  ),
+                                ),
+                              ),
+                          onPressed: () async {
+                            validateAll(setInner);
+                            if (nameErr != null ||
+                                dobErr != null ||
+                                weightErr != null ||
+                                heightErr != null)
+                              return;
+                            final w =
+                                double.tryParse(weightCtrl.text.trim()) ?? 0;
+                            final h =
+                                double.tryParse(heightCtrl.text.trim()) ?? 0;
+                            await _saveUserProfile(
+                              name: nameCtrl.text,
+                              dob: dobCtrl.text,
+                              weight: w,
+                              height: h,
+                              gender: genderLocal,
+                            );
+                            if (mounted) Navigator.pop(context);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Profile updated'),
+                                ),
+                              );
+                            }
+                          },
+                          child: Ink(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(colors: TColor.primaryG),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'Save',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   int _calculateAge(String dob) {
     if (dob.isEmpty) return 0;
     try {
@@ -148,7 +484,7 @@ class _ProfileViewState extends State<ProfileView> {
                       type: RoundButtonType.bgGradient,
                       fontSize: 12,
                       fontWeight: FontWeight.w400,
-                      onPressed: () {},
+                      onPressed: _showEditProfileDialog,
                     ),
                   ),
                 ],

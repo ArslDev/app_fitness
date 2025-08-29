@@ -8,11 +8,13 @@ import '../../common/color_extension.dart';
 import '../../common_widget/exercises_set_section.dart';
 import '../../common_widget/icon_title_next_row.dart';
 import '../../common_widget/round_button.dart';
+
 // Make sure to import ExercisesStepDetails if it exists
 // import 'package:app_fitness/view/workout_tracker/exercises_step_details.dart';
 
 class WorkoutDetailView extends StatefulWidget {
   final Map dObj;
+
   const WorkoutDetailView({super.key, required this.dObj});
 
   @override
@@ -60,7 +62,7 @@ class _WorkoutDetailViewState extends State<WorkoutDetailView> {
     {
       "image": "assets/img/Workout1.png",
       "title": "Fullbody Workout",
-      "time": "Today, 03:00pm",
+      "time": "no scheduled",
     },
     {
       "image": "assets/img/Workout2.png",
@@ -79,45 +81,60 @@ class _WorkoutDetailViewState extends State<WorkoutDetailView> {
     {
       "name": "Set 1",
       "set": [
-        {"image": "assets/img/img_1.png", "title": "Warm Up", "value": "05:00"},
         {
-          "image": "assets/img/img_2.png",
+          "image": "assets/lottie/Jumping Jack.json",
           "title": "Jumping Jack",
+          "value": "00:30",
+        },
+        {
+          "image": "assets/lottie/Cobras.json",
+          "title": "Cobras Stretch",
+          "value": "00:30",
+        },
+        {
+          "image": "assets/lottie/Burpee and Jump Exercise.json",
+          "title": "Burpee Jump",
+          "value": "15x",
+        },
+        {
+          "image": "assets/lottie/Split Jump Exercise.json",
+          "title": "Split Jump",
+          "value": "20x",
+        },
+        {
+          "image": "assets/lottie/Jumping_squats.json",
+          "title": "Jumping Squats",
+          "value": "15x",
+        },
+        {
+          "image": "assets/lottie/Seated abs circles.json",
+          "title": "Seated abs circles",
+          "value": "15x",
+        },
+        {
+          "image": "assets/lottie/7QesaOqGlW.json",
+          "title": "Military Push-ups",
+          "value": "05:00",
+        },
+        {
+          "image": "assets/lottie/AVxW9cSokG.json",
+          "title": "Squat kicks",
           "value": "12x",
         },
-        {"image": "assets/img/img_1.png", "title": "Skipping", "value": "15x"},
-        {"image": "assets/img/img_2.png", "title": "Squats", "value": "20x"},
         {
-          "image": "assets/img/img_1.png",
-          "title": "Arm Raises",
-          "value": "00:53",
+          "image": "assets/lottie/nOmdhPqDSs.json",
+          "title": "Inchworm",
+          "value": "15x",
         },
         {
-          "image": "assets/img/img_2.png",
-          "title": "Rest and Drink",
-          "value": "02:00",
+          "image": "assets/lottie/PL5WkM4oue.json",
+          "title": "Reverse Crunches",
+          "value": "20x",
         },
-      ],
-    },
-    {
-      "name": "Set 2",
-      "set": [
-        {"image": "assets/img/img_1.png", "title": "Warm Up", "value": "05:00"},
+
         {
-          "image": "assets/img/img_2.png",
-          "title": "Jumping Jack",
-          "value": "12x",
-        },
-        {"image": "assets/img/img_1.png", "title": "Skipping", "value": "15x"},
-        {"image": "assets/img/img_2.png", "title": "Squats", "value": "20x"},
-        {
-          "image": "assets/img/img_1.png",
-          "title": "Arm Raises",
-          "value": "00:53",
-        },
-        {
-          "image": "assets/img/img_2.png",
-          "title": "Rest and Drink",
+          "image": "assets/lottie/YA65B0veOR.json",
+          "title": "T Plank",
           "value": "02:00",
         },
       ],
@@ -170,7 +187,10 @@ class _WorkoutDetailViewState extends State<WorkoutDetailView> {
               flexibleSpace: Align(
                 alignment: Alignment.center,
                 child: Image.asset(
-                  "assets/img/detail_top.png",
+                  // Show the same image user tapped (fallback to previous placeholder if missing)
+                  (widget.dObj['image'] as String?)?.isNotEmpty == true
+                      ? widget.dObj['image'] as String
+                      : 'assets/img/detail_top.png',
                   width: media.width * 0.75,
                   height: media.width * 0.8,
                   fit: BoxFit.contain,
@@ -230,15 +250,6 @@ class _WorkoutDetailViewState extends State<WorkoutDetailView> {
                               ],
                             ),
                           ),
-                          TextButton(
-                            onPressed: () {},
-                            child: Image.asset(
-                              "assets/img/fav.png",
-                              width: 15,
-                              height: 15,
-                              fit: BoxFit.contain,
-                            ),
-                          ),
                         ],
                       ),
                       SizedBox(height: media.width * 0.05),
@@ -270,77 +281,6 @@ class _WorkoutDetailViewState extends State<WorkoutDetailView> {
                             _loadNextSchedule();
                           }
                         },
-                      ),
-
-
-                      SizedBox(height: media.width * 0.05),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            "You'll Need",
-                            style: TextStyle(
-                              color: TColor.black,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () {},
-                            child: Text(
-                              "${youArr.length} Items",
-                              style: TextStyle(
-                                color: TColor.gray,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(
-                        height: media.width * 0.5,
-                        child: ListView.builder(
-                          padding: EdgeInsets.zero,
-                          scrollDirection: Axis.horizontal,
-                          shrinkWrap: true,
-                          itemCount: youArr.length,
-                          itemBuilder: (context, index) {
-                            var yObj = youArr[index] as Map? ?? {};
-                            return Container(
-                              margin: const EdgeInsets.all(8),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    height: media.width * 0.35,
-                                    width: media.width * 0.35,
-                                    decoration: BoxDecoration(
-                                      color: TColor.lightGray,
-                                      borderRadius: BorderRadius.circular(15),
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Image.asset(
-                                      yObj["image"].toString(),
-                                      width: media.width * 0.2,
-                                      height: media.width * 0.2,
-                                      fit: BoxFit.contain,
-                                    ),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.all(8.0),
-                                    child: Text(
-                                      yObj["title"].toString(),
-                                      style: TextStyle(
-                                        color: TColor.black,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
                       ),
                       SizedBox(height: media.width * 0.05),
                       Row(
@@ -411,8 +351,8 @@ class _WorkoutDetailViewState extends State<WorkoutDetailView> {
                               if (item is Map) {
                                 final title = item['title']?.toString() ?? '';
                                 final value = item['value']?.toString();
-                                // Force every exercise (including rest) to 20 seconds as per requirement
-                                const int seconds = 20;
+                                // Force every exercise to 30 seconds
+                                const int seconds = 30;
                                 steps.add({
                                   'no': counter.toString().padLeft(2, '0'),
                                   'title': title,
@@ -429,7 +369,10 @@ class _WorkoutDetailViewState extends State<WorkoutDetailView> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => ExerciesView(steps: steps),
+                              builder: (context) => ExerciesView(
+                                steps: steps,
+                                workoutName: widget.dObj['title']?.toString(),
+                              ),
                             ),
                           );
                         },

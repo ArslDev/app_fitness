@@ -20,7 +20,7 @@ class _ActivityTrackerViewState extends State<ActivityTrackerView> {
   String _selectedPeriod = 'Weekly';
 
   // Daily water target in liters (persisted)
-  double _dailyWaterTargetLiters = 8.0;
+  double _dailyWaterTargetLiters = 2.0; // restricted range default 1-4L
   final String _waterTargetKey = 'daily_water_target_liters';
   // One-time drink amount (ml)
   int _defaultIntakeMl = 250;
@@ -114,8 +114,13 @@ class _ActivityTrackerViewState extends State<ActivityTrackerView> {
 
   Future<void> _loadWaterTarget() async {
     final prefs = await SharedPreferences.getInstance();
+    double loaded = prefs.getDouble(_waterTargetKey) ?? 2.0;
+    if (loaded < 1)
+      loaded = 1;
+    else if (loaded > 4)
+      loaded = 4;
     setState(() {
-      _dailyWaterTargetLiters = prefs.getDouble(_waterTargetKey) ?? 8.0;
+      _dailyWaterTargetLiters = loaded;
       _defaultIntakeMl = prefs.getInt(_defaultIntakeKey) ?? 250;
     });
   }
@@ -166,26 +171,28 @@ class _ActivityTrackerViewState extends State<ActivityTrackerView> {
       0.0,
       (p, c) => c > p ? c : p,
     );
-    final target = _dailyWaterTargetLiters > 0 ? _dailyWaterTargetLiters : 0;
-    final base = [
-      maxVal,
-      target,
-      5.0,
-    ].reduce((a, b) => a > b ? a : b); // ensure at least 5
-    final capped = base > 20 ? 20.0 : (base < 5 ? 5.0 : base);
-    return capped.toDouble();
+    final target = _dailyWaterTargetLiters > 0 ? _dailyWaterTargetLiters : 1.0;
+    // Base should be at least the greater of target or current max consumed
+    double base = maxVal > target ? maxVal : target;
+    base *= 1.1; // headroom
+    if (base < 1) base = 1;
+    if (base > 6) base = 6; // cap for 1-4L target + headroom
+    return base;
   }
 
   double get _monthlyBarMax {
-    if (_monthlyWaterLiters.isEmpty) return 5.0;
+    if (_monthlyWaterLiters.isEmpty)
+      return (_dailyWaterTargetLiters * 1.1).clamp(1, 6);
     final maxVal = _monthlyWaterLiters.fold<double>(
       0.0,
       (p, c) => c > p ? c : p,
     );
-    final target = _dailyWaterTargetLiters > 0 ? _dailyWaterTargetLiters : 0;
-    final base = [maxVal, target, 5.0].reduce((a, b) => a > b ? a : b);
-    final capped = base > 20 ? 20.0 : (base < 5 ? 5.0 : base);
-    return capped.toDouble();
+    final target = _dailyWaterTargetLiters > 0 ? _dailyWaterTargetLiters : 1.0;
+    double base = maxVal > target ? maxVal : target;
+    base *= 1.1;
+    if (base < 1) base = 1;
+    if (base > 6) base = 6;
+    return base;
   }
 
   double get _currentBarMax =>
@@ -193,6 +200,10 @@ class _ActivityTrackerViewState extends State<ActivityTrackerView> {
 
   Future<void> _saveWaterSettings(double liters, int intakeMl) async {
     final prefs = await SharedPreferences.getInstance();
+    if (liters < 1)
+      liters = 1;
+    else if (liters > 4)
+      liters = 4;
     await prefs.setDouble(_waterTargetKey, liters);
     await prefs.setInt(_defaultIntakeKey, intakeMl);
     setState(() {
@@ -220,8 +231,8 @@ class _ActivityTrackerViewState extends State<ActivityTrackerView> {
         final intVal = int.tryParse(v);
         if (intVal == null) {
           litersErrorText = 'Invalid number';
-        } else if (intVal < 1 || intVal > 15) {
-          litersErrorText = 'Enter 1 - 15';
+        } else if (intVal < 1 || intVal > 4) {
+          litersErrorText = 'Enter 1 - 4';
         } else {
           litersErrorText = null;
         }
@@ -310,7 +321,7 @@ class _ActivityTrackerViewState extends State<ActivityTrackerView> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Enter your goal in liters (1 - 15)',
+                        'Enter your goal in liters (1 - 4)',
                         style: TextStyle(
                           color: TColor.white.withOpacity(0.75),
                           fontSize: 12,
@@ -387,7 +398,7 @@ class _ActivityTrackerViewState extends State<ActivityTrackerView> {
                         const SizedBox(height: 6),
                       Wrap(
                         spacing: 8,
-                        children: [6, 8, 10, 12, 15].map((preset) {
+                        children: [1, 2, 3, 4].map((preset) {
                           bool selected =
                               litersController.text == preset.toString();
                           return ChoiceChip(
@@ -716,7 +727,7 @@ class _ActivityTrackerViewState extends State<ActivityTrackerView> {
                           child: TodayTargetCell(
                             icon: "assets/img/water.png",
                             value:
-                                '${_dailyWaterTargetLiters.toStringAsFixed(1)}L / ${_defaultIntakeMl}ml',
+                                '${(_dailyWaterTargetLiters % 1 == 0 ? _dailyWaterTargetLiters.toStringAsFixed(0) : _dailyWaterTargetLiters.toStringAsFixed(1))}L / ${_defaultIntakeMl}ml',
                             title: "Water Target & Tap",
                           ),
                         ),
